@@ -2,9 +2,7 @@
 import re
 from configparser import ConfigParser
 from pathlib import Path
-import os
-from typing import List
-
+from typing import List, Any
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.conditions import TextMentionTermination
 from autogen_agentchat.teams import RoundRobinGroupChat
@@ -20,32 +18,36 @@ conf = ConfigParser()
 conf.read(config_path)
 
 
-def format_testcases(raw_output: str) -> List[str]:
+def format_testcases(raw_output: str) -> list[list[Any]]:
     """格式化测试用例输出"""
-    print(f"格式化前raw_output：{raw_output}")
-    filter_cases = re.findall(r'(\|.+\|)', raw_output, re.IGNORECASE)
-    print(f"filter_cases：{filter_cases}")
-    deduplicate_case = list(dict.fromkeys(filter_cases))
-    print(f"去重后deduplicate_case：{deduplicate_case}")
-    cases = [item for item in deduplicate_case if '**' not in item]
-    print(f"去星后cases：{cases}")
+    # print(f"格式化前raw_output：{raw_output}")
+    markdown_cases = re.findall(r'(\|.+\|)', raw_output, re.IGNORECASE)
+    print(f"markdown_cases：{markdown_cases}")
+    # test_cases = list(dict.fromkeys(markdown_cases))
+    # print(f"test_cases：{test_cases}")
 
-    structured_cases = []
-    for line in cases[2:-1]:  # 跳过表头和分隔线
-        columns = [col.strip() for col in line.split("|") if col]
-        case_dict = {
-            "用例ID": columns[0],
-            "测试目标": columns[1],
-            "前置条件": columns[2],
-            "测试步骤": columns[3],
-            "预期结果": columns[4],
-            "优先级": columns[5],
-            "测试类型": columns[6],
-            "关联需求": columns[7]
-        }
-        structured_cases.append(case_dict)
+    test_cases = []
 
-    return structured_cases
+    for item in markdown_cases:
+        # 分割单元格并去除空白
+        cells = [cell.strip() for cell in item.strip('|').split('|')]
+        cells = list(filter(None, cells))  # 移除空字符串
+
+        # 跳过分隔行（所有单元格由短横线组成）
+        if all(cell.startswith('---') for cell in cells if cell):
+            continue
+
+        # 跳过表头行（首列为"用例ID"）
+        if cells and cells[0] == "用例ID":
+            continue
+
+        # 仅保留数据行（首列格式为"DM_xxx"）
+        if cells and cells[0].startswith("DM_"):
+            test_cases.append(cells)
+    # 输出转换后的列表
+    # print(f"test_cases:{test_cases}")
+
+    return test_cases
 
 
 async def generate_testcases(user_input: str) -> List[str]:

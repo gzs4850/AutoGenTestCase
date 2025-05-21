@@ -18,10 +18,12 @@ import time
 import os
 import re
 
+
+
 # 设置页面配置
 st.set_page_config(
     page_title="测试用例生成辅助工具",
-    page_icon=":tm:",
+    page_icon=":robot:",
     layout="wide"
 )
 
@@ -42,13 +44,15 @@ def css_init():
 </style>''', unsafe_allow_html=True)
 
 
+
+
 def session_init():
     if 'run_cases' not in st.session_state:
         st.session_state.run_cases = True
 
 
 def main():
-    if pt in ["Windows"]:
+    if pt in ["Windows","Linux"]:
         session_init()  # session缓存初始化
         css_init()  # 前端css样式初始化
         html_init()  # 前端html布局初始化
@@ -119,10 +123,7 @@ def html_init():
     # 引用了JQuery v2.2.4
     components.html(f'''<script src="https://cdn.bootcdn.net/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
         <script>{js_code}</script>''', width=0, height=0)
-    # sidebar图标
-    st.sidebar.markdown(
-        '''<a href="#"><img src='data:image/png;base64,{}' class='img-fluid' width=40 height=40 target='_self'></a>'''.format(
-            img_to_bytes("img/Jack.png")), unsafe_allow_html=True)
+
 
     # sidebar.expander
     with st.sidebar:
@@ -130,19 +131,18 @@ def html_init():
         with expander1:
             st.markdown(
                 """
-            👉<a href="https://github.com/13429837441/AutoGenTestCase/blob/main/README.md" target='blank'>模型ApiKey申请说明</a>👈
             ### **使用步骤**
             ##### 1、上传文件（.txt）或手动输入需求描述
             ##### 2、设置高级选项设置
             ##### 3、点击"生成测试用例"按钮
             ##### 4、查看生成的测试用例
             ##### 5、下载测试用例文件
-            
+
             ### **高级选项设置**
             ##### **用例分类**：选择用例类型（功能验证用例、边界用例、异常场景用例、性能/兼容性用例、回归测试用例）
             ##### **用例优先级**：设置整体用例的优先级
             """
-            , unsafe_allow_html=True)
+                , unsafe_allow_html=True)
 
         expander2 = st.expander("关于", False)
         with expander2:
@@ -153,11 +153,7 @@ def html_init():
                 ###### 本工具是利用deepseek写测试用例，通义千问负责用例评审
                 """
             )
-    # sidebar标题
-    st.sidebar.markdown("---")
 
-    st.sidebar.markdown('''<small style='float: right'>By <a id="reload" href="#公众号：One Little Testing" title="公众号：One Little Testing">@Jack</a></small>''',
-                        unsafe_allow_html=True)
 
     # 读取配置
     conf.read(config_path)
@@ -293,11 +289,11 @@ def html_init():
             show_slider = st.checkbox('用例分类占比(%)', True)
             cols4 = st.columns([2, 2])
             if show_slider:
-                functional_testing = cols4[0].slider("功能用例", min_value=0, max_value=100, value=55)
-                boundary_testing = cols4[0].slider("边界用例", min_value=0, max_value=100, value=25)
+                functional_testing = cols4[0].slider("功能用例", min_value=0, max_value=100, value=50)
+                boundary_testing = cols4[0].slider("边界用例", min_value=0, max_value=100, value=20)
                 exception_testing = cols4[0].slider("异常用例", min_value=0, max_value=100, value=20)
-                perfmon_testing = cols4[1].slider("性能/兼容性用例", min_value=0, max_value=100, value=0)
-                regression_testing = cols4[1].slider("回归测试用例", min_value=0, max_value=100, value=0)
+                perfmon_testing = cols4[1].slider("性能/兼容性用例", min_value=0, max_value=100, value=5)
+                regression_testing = cols4[1].slider("回归测试用例", min_value=0, max_value=100, value=5)
                 cases_rate_list = [functional_testing,
                                    boundary_testing,
                                    exception_testing,
@@ -331,17 +327,17 @@ def html_init():
 
         system_writer_message = read_system_message("TESTCASE_WRITER_SYSTEM_MESSAGE.txt")
         system_reader_message = read_system_message("TESTCASE_READER_SYSTEM_MESSAGE.txt")
-        tester_system_message = system_writer_message.replace("{{functional_testing}}", str(cases_rate_list[0]))\
-            .replace("{{boundary_testing}}", str(cases_rate_list[1]))\
-            .replace("{{exception_testing}}", str(cases_rate_list[2]))\
-            .replace("{{perfmon_testing}}", str(cases_rate_list[3]))\
+        tester_system_message = system_writer_message.replace("{{functional_testing}}", str(cases_rate_list[0])) \
+            .replace("{{boundary_testing}}", str(cases_rate_list[1])) \
+            .replace("{{exception_testing}}", str(cases_rate_list[2])) \
+            .replace("{{perfmon_testing}}", str(cases_rate_list[3])) \
             .replace("{{regression_testing}}", str(cases_rate_list[4]))
         # 消息模板
         message_tab1, message_tab2 = cols3[1].tabs(["✍执行", "🔍 审核"])
         with message_tab1:
-            customer_system_message = st.text_area("👉消息模板预览", height=480, value=tester_system_message)
+            customer_system_message = st.text_area("👉消息模板预览", height=480, value=tester_system_message, key="tab1_message")
         with message_tab2:
-            customer_reader_message = st.text_area("👉消息模板预览", height=480, value=system_reader_message)
+            customer_reader_message = st.text_area("👉消息模板预览", height=480, value=system_reader_message, key="tab2_message")
         # 调整模型参数
         model_deepseek_info["parameters"]["max_tokens"] = int(conf['deepseek']['tokens'])
         model_deepseek_info["parameters"]["temperature"] = int(conf['deepseek']['temperature']) / 10
@@ -499,7 +495,7 @@ def html_init():
                     if eval(conf['deepseek']['choice']) and eval(conf['qwen']['choice']):
                         if conf['deepseek']['api_key'] != "" and conf['qwen']['api_key'] != "":
                             try:
-                                with st.spinner("正在生成测试用例..."):
+                                with st.spinner("正在生成测试用例...", show_time=True):
                                     result = asyncio.run(m_roles_generate_testcases())
                                     case_list = format_testcases(result)
                                 st.success("✅ 测试用例生成完成!")
@@ -521,9 +517,9 @@ def html_init():
                                             for col, cell in enumerate(case.split("|")):
                                                 if col > 0:
                                                     if row > 1:
-                                                        worksheet.write(row-1, col-1, str(cell).strip())
+                                                        worksheet.write(row - 1, col - 1, str(cell).strip())
                                                     else:
-                                                        worksheet.write(row, col-1, str(cell).strip())
+                                                        worksheet.write(row, col - 1, str(cell).strip())
                                     workbook.close()
                                     st.download_button(
                                         label="下载测试用例(.xlsx)",
@@ -541,7 +537,7 @@ def html_init():
                     elif eval(conf['deepseek']['choice']) and not eval(conf['qwen']['choice']):
                         if conf['deepseek']['api_key'] != "":
                             try:
-                                with st.spinner("正在生成测试用例..."):
+                                with st.spinner("正在生成测试用例...", show_time=True):
                                     result = asyncio.run(s_roles_generate_testcases())
                                     case_list = format_testcases(result)
                                 st.success("✅ 测试用例生成完成!")
